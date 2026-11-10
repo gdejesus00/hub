@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en" data-theme="auto">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Hub</title>
+  <meta name="description" content="A one-screen dashboard of the day.">
+  <meta name="theme-color" content="#0B1020">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="intro">
+  <main id="view" tabindex="-1"></main>
+  <button id="home-pill" class="home-pill" type="button" data-action="home"></button>
+  <nav id="tabs" class="tabs" aria-label="Pages"></nav>
+  <div id="sheet-root" hidden></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <noscript><p style="padding:24px;font-family:sans-serif">This app needs JavaScript turned on.</p></noscript>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

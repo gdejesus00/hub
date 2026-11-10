@@ -1,0 +1,5 @@
+node_modules/
+*.log
+# Real content never belongs in this repository.
+local-content.txt
+docs/

@@ -1,0 +1,11 @@
+{
+  "name": "hub",
+  "private": true,
+  "type": "module",
+  "description": "A one-screen dashboard of the day, installable as a phone app.",
+  "scripts": {
+    "start": "node tools/serve.mjs",
+    "test": "node --test",
+    "icons": "node tools/make-icons.mjs"
+  }
+}

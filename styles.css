@@ -246,6 +246,8 @@ h1 { font-size: 1.6875rem; font-weight: 700; line-height: 1.15; letter-spacing: 
 .input { flex: 1; min-width: 0; min-height: 46px; padding: 0 14px; border-radius: 14px; background: var(--bg); border: 1px solid var(--line); }
 .input:focus { outline: none; border-color: var(--accent); }
 .hint { font-size: .8rem; color: var(--muted); margin: 6px 0 0; }
+.hint.tight { margin: 0 0 8px; }
+.noscript { padding: 24px; font-family: sans-serif; }
 .errorbox { font-size: .84rem; color: var(--wait); background: color-mix(in srgb, var(--wait) 12%, transparent); border: 1px solid color-mix(in srgb, var(--wait) 40%, transparent); border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; overflow-wrap: anywhere; }
 .setting + .setting { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
 .setting label, .setting .label { display: block; font-weight: 600; margin-bottom: 6px; }

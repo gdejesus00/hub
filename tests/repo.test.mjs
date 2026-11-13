@@ -16,14 +16,14 @@ test('every file the service worker caches exists', () => {
 
 test('every JavaScript module the app imports is cached for offline use', () => {
   const sw = read('sw.js');
-  for (const file of ['app.js', 'config.js', 'content.js', 'drive.js', 'icons.js', 'routines.js', 'store.js', 'time.js']) {
+  for (const file of ['app.js', 'config.js', 'content.js', 'dispatch.js', 'drive.js', 'icons.js', 'routines.js', 'store.js', 'time.js']) {
     assert.ok(sw.includes(`'${file}'`), `${file} is not in APP_FILES`);
     for (const match of read(file).matchAll(/from '\.\/([\w.-]+)'/g)) assert.ok(sw.includes(`'${match[1]}'`), `${match[1]} is not in APP_FILES`);
   }
 });
 
 test('the cache name carries the app version', () => {
-  assert.ok(read('sw.js').includes(`const CACHE = 'hub-v${APP_VERSION}';`));
+  assert.ok(read('sw.js').includes(`const CACHE = 'hive-v${APP_VERSION}';`));
 });
 
 test('the manifest is installable and its icons are the sizes they claim', () => {
@@ -39,7 +39,7 @@ test('the manifest is installable and its icons are the sizes they claim', () =>
 });
 
 // ---------- security ----------
-const MODULES = ['app.js', 'config.js', 'content.js', 'drive.js', 'icons.js', 'routines.js', 'store.js', 'time.js'];
+const MODULES = ['app.js', 'config.js', 'content.js', 'dispatch.js', 'drive.js', 'icons.js', 'routines.js', 'store.js', 'time.js'];
 const policy = () => /http-equiv="Content-Security-Policy" content="([^"]+)"/.exec(read('index.html'))?.[1] ?? '';
 const directives = () => Object.fromEntries(
   policy().split(';').map(part => part.trim().split(/\s+/)).filter(([name]) => name).map(([name, ...values]) => [name, values]),
@@ -60,9 +60,13 @@ test('the page security policy allows only the app itself and the hosts it needs
     'https://accounts.google.com/gsi/client',
     'https://accounts.google.com/gsi/style',
     'https://accounts.google.com/o/oauth2/',
+    'https://gdejesus00.github.io/dispatch/',
     'https://oauth2.googleapis.com',
     'https://www.googleapis.com',
   ]);
+  // The Dispatch papers are public pages read by the Today page. Only that one folder is allowed
+  // (a path in the policy), never the whole host.
+  assert.ok(directives()['connect-src'].includes('https://gdejesus00.github.io/dispatch/'));
   // Disconnect revokes the sign-in at oauth2.googleapis.com. Google's library hands the
   // sign-in back through a hidden frame under accounts.google.com/o/oauth2/.
   assert.ok(directives()['connect-src'].includes('https://oauth2.googleapis.com'));

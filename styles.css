@@ -285,8 +285,8 @@ h1 { font-size: 1.6875rem; font-weight: 700; line-height: 1.15; letter-spacing: 
 .xlist { display: flex; flex-direction: column; gap: 6px; padding-left: 18px; list-style: disc; font-size: .875rem; line-height: 1.4; }
 .xlinks { display: flex; flex-wrap: wrap; gap: 8px; }
 .xlink {
-  display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 12px; border-radius: 12px;
-  background: var(--raised); border: 1px solid var(--line); color: var(--link); font-size: .84rem; font-weight: 600;
+  display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 0 10px; border-radius: 12px;
+  background: var(--raised); border: 1px solid var(--line); color: var(--link); font-size: .8rem; font-weight: 600;
 }
 .xactions { display: flex; flex-wrap: wrap; gap: 8px; }
 .xactions .btn { flex: 1 1 120px; }

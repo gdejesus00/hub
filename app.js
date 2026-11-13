@@ -62,7 +62,7 @@ const state = {
 // ---------- installing the app ----------
 // The browser's install box. It arrives in an event, may be opened once, and only after a tap.
 let installBox = null;
-const isStandalone = () => ['standalone', 'fullscreen', 'minimal-ui'].some(mode => matchMedia(`(display-mode: ${mode})`).matches) || navigator.standalone === true;
+const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 const installStatus = () => installState({ standalone: isStandalone(), prompt: Boolean(installBox), installedBefore: store.read('installed', false) });
 
 // ---------- what's stored on the phone ----------
@@ -615,7 +615,7 @@ function renderSettings() {
       ['Updates', 'On their own. Open the app while online, close it, and open it again.'],
       ['Your data', "Stays in this browser's storage. Removing the app keeps it unless you also clear the site's data."],
       ['To remove', 'Hold the icon on the home screen, then choose Uninstall.'],
-    ])}${status === 'manual' ? '' : `<p class="caps tiny">By hand</p>${steps}`}`,
+    ])}${status === 'ready' || status === 'likely' ? `<p class="caps tiny">By hand</p>${steps}` : ''}`,
   });
   const aboutPart = xcard('about', {
     cls: 'card',

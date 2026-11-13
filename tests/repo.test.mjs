@@ -59,8 +59,14 @@ test('the page security policy allows only the app itself and the hosts it needs
     'https://accounts.google.com/gsi/',
     'https://accounts.google.com/gsi/client',
     'https://accounts.google.com/gsi/style',
+    'https://accounts.google.com/o/oauth2/',
+    'https://oauth2.googleapis.com',
     'https://www.googleapis.com',
   ]);
+  // Disconnect revokes the sign-in at oauth2.googleapis.com. Google's library hands the
+  // sign-in back through a hidden frame under accounts.google.com/o/oauth2/.
+  assert.ok(directives()['connect-src'].includes('https://oauth2.googleapis.com'));
+  assert.ok(directives()['frame-src'].includes('https://accounts.google.com/o/oauth2/'));
 });
 
 test('the policy allows every outside address the code uses', () => {

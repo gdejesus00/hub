@@ -5,6 +5,7 @@ import { dayPlan, normalize, parseRaw } from './content.js';
 import * as dispatch from './dispatch.js';
 import * as drive from './drive.js';
 import { icon, tileIcon } from './icons.js';
+import { STATUS_LINE, installState, manualSteps, showOnToday } from './install.js';
 import * as r from './routines.js';
 import * as store from './store.js';
 import { DAYS, MONTHS, addDays, dateStr, daysBetween, fmtTime, initClock, longDate, now, nowMinutes, parseDate } from './time.js';
@@ -57,6 +58,12 @@ const state = {
   papersAt: 0,
   papersBusy: false,
 };
+
+// ---------- installing the app ----------
+// The browser's install box. It arrives in an event, may be opened once, and only after a tap.
+let installBox = null;
+const isStandalone = () => ['standalone', 'fullscreen', 'minimal-ui'].some(mode => matchMedia(`(display-mode: ${mode})`).matches) || navigator.standalone === true;
+const installStatus = () => installState({ standalone: isStandalone(), prompt: Boolean(installBox), installedBefore: store.read('installed', false) });
 
 // ---------- what's stored on the phone ----------
 const today = () => dateStr(now());
@@ -432,6 +439,13 @@ function dispatchCard() {
   return `<section class="card dispatch"><h2 class="caps">Dispatch</h2><ul class="dplist">${rows}</ul></section>`;
 }
 
+// In a browser tab, an Install button sits near the top of Today until the app is installed or the
+// button is hidden. Settings always has it.
+function installBanner() {
+  if (!showOnToday(installStatus(), Boolean(getPrefs().installHidden))) return '';
+  return `<section class="banner install" aria-label="Install"><div><b>Put ${esc(APP_NAME)} on your home screen.</b> It opens like an app.</div><button class="btn primary small" data-action="install">Install</button><button class="iconbtn" data-action="hide-install" aria-label="Not now">${icon('close', 18)}</button></section>`;
+}
+
 function renderToday() {
   const d = now();
   const m = nowMinutes(d);
@@ -442,6 +456,7 @@ function renderToday() {
     state.error ? `<button class="warn" data-action="tab" data-tab="settings">${icon('alert', 16)}Couldn't read today's update</button>` : '',
     plan.headline ? `<p class="headline">${esc(plan.headline)}</p>` : '',
     showShutdown ? `<section class="banner" aria-label="Shutdown"><div><b>Shutdown time.</b> Write tomorrow's top 3.</div><button class="btn primary small" data-action="sheet" data-sheet="shutdown">Write</button><button class="iconbtn" data-action="dismiss-shutdown" aria-label="Hide for today">${icon('close', 18)}</button></section>` : '',
+    installBanner(),
     state.hasContent ? nowCard(plan.blocks, d, m) : welcomeCard(),
     timeline(plan.blocks, m),
     rings(d),
@@ -553,7 +568,7 @@ function renderSettings() {
   const connected = drive.hasToken();
   const ever = drive.everConnected();
   const account = drive.account();
-  const status = demo ? 'Demo content, not signed in'
+  const driveStatus = demo ? 'Demo content, not signed in'
     : connected ? `Connected${account ? ` as ${esc(account)}` : ''}`
     : ever ? 'Signed out. Sync to sign in again.'
     : 'Not connected';
@@ -569,7 +584,7 @@ function renderSettings() {
     cls: 'card',
     label: 'More about the Google Drive link',
     head: '<h2 class="caps">Google Drive</h2>',
-    mid: `<dl class="rows"><dt>Status</dt><dd>${status}</dd><dt>Last sync</dt><dd>${state.fetchedAt ? stamp(new Date(state.fetchedAt)) : 'Never'}</dd><dt>Content updated</dt><dd>${state.hasContent ? updated : 'No content yet'}</dd></dl>
+    mid: `<dl class="rows"><dt>Status</dt><dd>${driveStatus}</dd><dt>Last sync</dt><dd>${state.fetchedAt ? stamp(new Date(state.fetchedAt)) : 'Never'}</dd><dt>Content updated</dt><dd>${state.hasContent ? updated : 'No content yet'}</dd></dl>
     ${state.error ? `<p class="errorbox"><b>Couldn't read today's update.</b> Showing the last good copy. ${esc(state.error)}</p>` : ''}
     <div class="actions">
       <button class="btn primary" data-action="sync">${connected || ever || demo ? 'Sync now' : 'Connect Google Drive'}</button>
@@ -581,6 +596,26 @@ function renderSettings() {
       ['Dispatch', papers],
       ['Sign-in', 'Kept on this phone only, until it runs out or you disconnect'],
     ]),
+  });
+  const status = installStatus();
+  const hidden = Boolean(prefs.installHidden);
+  const steps = `<ol class="steps">${manualSteps(navigator.userAgent).map(step => `<li>${esc(step)}</li>`).join('')}</ol>`;
+  const installPart = xcard('install', {
+    cls: 'card',
+    label: 'More about installing this app',
+    head: '<h2 class="caps">Install</h2>',
+    mid: `<p class="install-status${status === 'installed' || status === 'likely' ? ' is-ok' : ''}">${STATUS_LINE[status]}</p>
+    ${status === 'ready' ? `<button class="btn primary wide" data-action="install">Install ${esc(APP_NAME)}</button>` : ''}
+    ${status === 'manual' ? steps : ''}
+    ${status === 'installed' ? '' : `<div class="setting"><p class="label">Install button on Today</p>
+      <div class="seg two" role="group" aria-label="Install button on Today">${[['show', 'Show', !hidden], ['hide', 'Hide', hidden]].map(([value, label, on]) => `<button data-action="install-pref" data-value="${value}" aria-pressed="${on}">${label}</button>`).join('')}</div>
+      <p class="hint">It only ever shows in the browser, never inside the installed app.</p></div>`}`,
+    body: `${facts([
+      ['Name', `${esc(APP_NAME)}, with its own icon on the home screen`],
+      ['Updates', 'On their own. Open the app while online, close it, and open it again.'],
+      ['Your data', "Stays in this browser's storage. Removing the app keeps it unless you also clear the site's data."],
+      ['To remove', 'Hold the icon on the home screen, then choose Uninstall.'],
+    ])}${status === 'manual' ? '' : `<p class="caps tiny">By hand</p>${steps}`}`,
   });
   const aboutPart = xcard('about', {
     cls: 'card',
@@ -594,6 +629,7 @@ function renderSettings() {
     ]),
   });
   return `<header class="head"><h1>Settings</h1></header>
+  ${status === 'installed' ? '' : installPart}
   ${drivePart}
   <section class="card"><h2 class="caps">Routines</h2>
     <form class="setting" data-form="music">
@@ -614,6 +650,7 @@ function renderSettings() {
   <section class="card"><h2 class="caps">Theme</h2>
     <div class="seg" role="group" aria-label="Theme">${['auto', 'light', 'dark'].map(t => `<button data-action="theme" data-theme="${t}" aria-pressed="${theme === t}">${t[0].toUpperCase() + t.slice(1)}</button>`).join('')}</div>
   </section>
+  ${status === 'installed' ? installPart : ''}
   ${aboutPart}`;
 }
 
@@ -692,7 +729,7 @@ function focusKey() {
   if (el.id) return `#${CSS.escape(el.id)}`;
   if (el.dataset.list) return `input[data-list="${CSS.escape(el.dataset.list)}"][data-item="${CSS.escape(el.dataset.item)}"]`;
   if (!el.dataset.action) return '';
-  return `[data-action="${el.dataset.action}"]` + ['tab', 'filter', 'theme', 'delta', 'sheet', 'target', 'id', 'ring', 'counter']
+  return `[data-action="${el.dataset.action}"]` + ['tab', 'filter', 'theme', 'delta', 'sheet', 'target', 'id', 'ring', 'counter', 'value']
     .filter(name => el.dataset[name] != null).map(name => `[data-${name}="${CSS.escape(el.dataset[name])}"]`).join('');
 }
 
@@ -897,6 +934,36 @@ const actions = {
   'dispatch-retry'() {
     refreshPapers(true);
   },
+  async install() {
+    const box = installBox;
+    if (!box) {
+      // No install box to open: show the steps in Settings instead of doing nothing.
+      state.tab = 'settings';
+      state.open.add('install');
+      render();
+      goTo('card-install');
+      return;
+    }
+    installBox = null; // a box can be opened only once
+    let outcome = '';
+    try {
+      box.prompt();
+      ({ outcome } = await box.userChoice);
+    } catch {
+      outcome = '';
+    }
+    if (outcome !== 'accepted') toast('Not installed. The steps are in Settings.');
+    render();
+  },
+  'hide-install'() {
+    store.write('prefs', { ...getPrefs(), installHidden: true });
+    toast('Hidden. Install is still in Settings.');
+    render();
+  },
+  'install-pref'(el) {
+    store.write('prefs', { ...getPrefs(), installHidden: el.dataset.value === 'hide' });
+    render();
+  },
   workout() {
     const dates = getWorkouts();
     const day = today();
@@ -1078,6 +1145,25 @@ addEventListener('online', () => {
 });
 addEventListener('offline', render);
 
+// ---------- installing: what the browser tells us ----------
+const redraw = () => {
+  if (!isTyping()) render();
+};
+// The browser offers its install box. Keep it for the Install button instead of the browser's own bar.
+addEventListener('beforeinstallprompt', event => {
+  event.preventDefault();
+  installBox = event;
+  store.remove('installed'); // an offer means the app is not on this device
+  redraw();
+});
+addEventListener('appinstalled', () => {
+  installBox = null;
+  store.write('installed', true);
+  toast(`${APP_NAME} is installed`);
+  redraw();
+});
+matchMedia('(display-mode: standalone)').addEventListener?.('change', redraw);
+
 // ---------- startup ----------
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
@@ -1091,6 +1177,7 @@ function registerServiceWorker() {
 applyTheme();
 store.prune(today());
 loadSaved();
+if (isStandalone()) store.write('installed', true);
 $('#home-pill').innerHTML = `${icon('home', 20)}I'm home`;
 render();
 setTimeout(() => document.body.classList.remove('intro'), 1100);

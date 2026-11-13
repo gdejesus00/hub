@@ -6,5 +6,5 @@ export const CONTENT_FILE = 'HUB_content';
 
 // Bump both of these on every release. sw.js must use the same version in its cache name.
 export const APP_NAME = 'Hive';
-export const APP_VERSION = '1.1.0';
-export const WHATS_NEW = 'Renamed Hive. A Dispatch line on Today, more projects, and every card opens for more detail. Safer: a page security policy, and test flags only work on the PC.';
+export const APP_VERSION = '1.2.0';
+export const WHATS_NEW = 'An Install button. Open Hive in the browser and one tap puts it on your home screen. It is on Today and in Settings, where you can also hide it.';

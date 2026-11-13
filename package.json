@@ -1,8 +1,8 @@
 {
-  "name": "hub",
+  "name": "hive",
   "private": true,
   "type": "module",
-  "description": "A one-screen dashboard of the day, installable as a phone app.",
+  "description": "Hive: a one-screen dashboard of the day, projects and news, installable as a phone app.",
   "scripts": {
     "start": "node tools/serve.mjs",
     "test": "node --test",

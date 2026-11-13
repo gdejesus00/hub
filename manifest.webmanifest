@@ -1,7 +1,7 @@
 {
-  "name": "Hub",
-  "short_name": "Hub",
-  "description": "A one-screen dashboard of the day.",
+  "name": "Hive",
+  "short_name": "Hive",
+  "description": "Your day, your projects and your news on one screen.",
   "id": "./",
   "start_url": "./",
   "scope": "./",

@@ -24,9 +24,14 @@ const PATHS = {
   bolt: '<path d="M13 3L5 13h6l-1 8 8-10h-6z"/>',
   pen: '<path d="M4 20l1-4L16 5l3 3L8 19z"/><path d="M14 7l3 3"/>',
   doc: '<path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h6"/>',
+  news: '<path d="M5 4h12a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2z"/><path d="M19 9h2v9a2 2 0 0 1-2 2M8.5 8h6M8.5 12h6M8.5 16h3"/>',
+  // open and close, links, copy
+  chevron: '<path d="M6 9l6 6 6-6"/>',
+  external: '<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/>',
+  copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
 };
 
-const TILE_ICONS = ['food', 'idea', 'folder', 'hive', 'book', 'game', 'bolt', 'pen'];
+const TILE_ICONS = ['food', 'idea', 'folder', 'hive', 'book', 'game', 'bolt', 'pen', 'news'];
 
 export function icon(name, size = 22) {
   const body = PATHS[name] ?? PATHS.doc;

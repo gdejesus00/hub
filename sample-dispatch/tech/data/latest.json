@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "date": "2026-11-09",
+  "lead": {
+    "headline": "A small open-source editor ships tabs; a big phone maker delays its update",
+    "dek": "Maintainers say the tab feature took two years. The phone update slips to December.",
+    "sources": [
+      {
+        "name": "Release notes",
+        "url": "https://example.com/editor/releases"
+      }
+    ]
+  },
+  "bottom_line": "Demo summary: one editor release and one delayed update. This paper is made-up demo content."
+}

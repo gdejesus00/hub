@@ -1,12 +1,12 @@
-# Hub
+# Hive
 
-A one-screen dashboard of your day that installs on a phone like an app. It shows what's on now, what's next, a countdown, a day timeline, three progress rings, checklists, projects and links to your pages.
+Hive is a one-screen dashboard of your day that installs on a phone like an app. It shows what's on now, what's next, a countdown, a day timeline, three progress rings, the day's headlines from your news papers, checklists, projects and links to your pages. Every card opens when tapped to show more detail. (The repository is still named hub so the published address keeps working.)
 
 This repository holds only the app's code. Your schedule, projects and links live in a Google Doc in your own Google Drive, and your ticks and counters stay on your phone. Nothing personal belongs in this repository.
 
 ## Pages
 
-- **Today**: the now card, countdown, timeline, rings, top 3, the day's plan, the 15-minute reset and what's coming up.
+- **Today**: the now card, countdown, timeline, rings, the Dispatch line, top 3, the day's plan, the 15-minute reset and what's coming up.
 - **Projects**: counts by state, filters, and one card per project.
 - **Pages**: tiles that open your one-pagers and documents.
 - **Settings**: Google Drive, the "I'm home" music link, counters, theme and version.
@@ -41,6 +41,8 @@ The app reads one Google Doc named `HUB_content` from the signed-in Google Drive
 - `countdown`, `shutdown`: a `time` and which `days` (every, weekdays or weekends)
 - `cleaning`, `home.checklist`, `home.musicUrl`, `boxes`
 - `upcoming`, `projects`, `pages`
+- `dispatch`: the news papers for the Dispatch line on Today, each `{ "name", "url" }`. The app reads the public file `<url>data/latest.json` (headline, summary, bottom line and sources). Papers that can't be read keep their last good copy.
+- More detail when a card opens: `detail` (a string or list of lines) on upcoming items, projects and pages, and `links` (a list of `{ "label", "url" }`) on projects.
 
 Edit the Doc and the app shows the change on its next sync. Missing keys hide their card, unknown keys are ignored, and if the JSON is broken the app keeps showing the last good copy with a warning.
 
@@ -50,7 +52,7 @@ Plain HTML, CSS and JavaScript modules with no framework and no build step. A se
 
 ## Security
 
-- `index.html` carries a page security policy (Content-Security-Policy). It allows the app's own files, Google's sign-in library and the Google Drive API, and nothing else. Inline scripts and inline styles are blocked.
+- `index.html` carries a page security policy (Content-Security-Policy). It allows the app's own files, Google's sign-in library, the Google Drive API and one public folder of Dispatch editions, and nothing else. Inline scripts and inline styles are blocked.
 - Because of that, markup never uses `style="..."`. Sizes and positions are written as `data-css="..."` and applied by `applyCss` in `app.js` after each render.
 - Access to Drive is read-only, and the sign-in is kept on the phone only until it runs out or you disconnect.
 - `node --test` fails if the policy is loosened, if a new outside host appears, or if an email address, phone number, user folder path, key or file ID shows up anywhere in the repository. To block your own private words too, list them one per line in a file named `.private_terms` (git ignores it).
@@ -60,6 +62,7 @@ Plain HTML, CSS and JavaScript modules with no framework and no build step. A se
 | --- | --- |
 | `app.js` | Startup, the four pages, sheets and taps |
 | `content.js` | Cleans and checks the content file |
+| `dispatch.js` | Reads the public Dispatch editions for the Dispatch line |
 | `routines.js` | Now and next, countdown, shutdown, streak, box estimate |
 | `drive.js` | Google sign-in and reading the Doc |
 | `store.js` | Safe storage on the phone |

@@ -5,5 +5,6 @@ export const GOOGLE_CLIENT_ID = '315388448701-cpeds2go7c1p973vuo9df2dj1ktg9cp5.a
 export const CONTENT_FILE = 'HUB_content';
 
 // Bump both of these on every release. sw.js must use the same version in its cache name.
-export const APP_VERSION = '1.0.1';
-export const WHATS_NEW = 'Safer: a page security policy, and test flags only work on the PC.';
+export const APP_NAME = 'Hive';
+export const APP_VERSION = '1.1.0';
+export const WHATS_NEW = 'Renamed Hive. A Dispatch line on Today, more projects, and every card opens for more detail. Safer: a page security policy, and test flags only work on the PC.';

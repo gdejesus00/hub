@@ -1,4 +1,4 @@
-// Local server for developing the hub app. Serves this folder on this PC only.
+// Local server for developing Hive. Serves this folder on this PC only.
 // Run: node tools/serve.mjs                 then open http://localhost:5200/?demo=1
 //      --port 5201                          to use another port
 //      --content C:\path\to\file.txt        to serve a private content file at /local-content.txt
@@ -67,5 +67,5 @@ const server = http.createServer((req, res) => {
   });
 });
 server.listen(PORT, '127.0.0.1', () => {
-  console.log(`Hub app is running at http://localhost:${PORT}/ (this PC only). Add ?demo=1 for demo content.`);
+  console.log(`Hive is running at http://localhost:${PORT}/ (this PC only). Add ?demo=1 for demo content.`);
 });

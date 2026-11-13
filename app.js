@@ -532,7 +532,7 @@ function tilesHtml() {
     tag: 'div',
     cls: 'tile',
     label: `More about ${p.title}`,
-    head: `<span class="tile-ico" data-css="--t:var(--${TILE_TINT[p.icon] ?? 'work'})">${tileIcon(p.icon)}</span><b>${esc(p.title)}</b><span class="tile-desc">${esc(p.desc)}</span>`,
+    head: `<span class="tile-ico" data-css="--t:var(--${TILE_TINT[p.icon] ?? 'work'})">${tileIcon(p.icon)}</span><b>${esc(p.title)}</b><span class="tile-desc">${esc(p.desc)}</span><a class="tile-go" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer" aria-label="Open ${esc(p.title)}">${icon('external', 18)}</a>`,
     body: `${xlist(p.detail)}${facts([['Group', esc(p.group)], ['Opens', esc(hostOf(p.url))]])}<div class="xactions"><a class="btn primary small" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">Open${icon('external', 16)}</a><button class="btn small" type="button" data-action="copy" data-url="${esc(p.url)}">${icon('copy', 16)}Copy link</button></div>`,
   })).join('')}</div></section>`).join('');
 }

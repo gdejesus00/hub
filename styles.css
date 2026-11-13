@@ -242,6 +242,8 @@ h1 { font-size: 1.6875rem; font-weight: 700; line-height: 1.15; letter-spacing: 
 .tile .xhead { display: flex; flex-direction: column; gap: 2px; min-height: 84px; padding-right: 22px; }
 .tile .chev { top: 2px; }
 .tile.is-open { grid-column: 1 / -1; }
+/* The corner arrow opens the page straight away; the rest of the tile opens its details. */
+.tile .tile-go { position: absolute; right: -8px; bottom: -8px; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; color: var(--link); }
 .tile-ico { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; margin-bottom: 6px; color: var(--t, var(--accent)); background: color-mix(in srgb, var(--t, var(--accent)) 16%, transparent); }
 .tile b { line-height: 1.25; }
 .tile-desc { font-size: .8rem; color: var(--muted); line-height: 1.3; }

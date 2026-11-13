@@ -2,6 +2,11 @@
 <html lang="en" data-theme="auto">
 <head>
   <meta charset="utf-8">
+  <!-- Page security policy: only this app's own files, plus Google sign-in and the Drive API.
+       No inline scripts or styles. tests/repo.test.mjs checks this list.
+       oauth2.googleapis.com is where Disconnect revokes the sign-in; accounts.google.com/o/oauth2/
+       is the hidden frame Google's library uses to hand the sign-in back to the app. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' https://accounts.google.com/gsi/style; connect-src 'self' https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com/gsi/; frame-src https://accounts.google.com/gsi/ https://accounts.google.com/o/oauth2/; img-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Hub</title>
   <meta name="description" content="A one-screen dashboard of the day.">
@@ -17,7 +22,7 @@
   <nav id="tabs" class="tabs" aria-label="Pages"></nav>
   <div id="sheet-root" hidden></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <noscript><p style="padding:24px;font-family:sans-serif">This app needs JavaScript turned on.</p></noscript>
+  <noscript><p class="noscript">This app needs JavaScript turned on.</p></noscript>
   <script type="module" src="app.js"></script>
 </body>
 </html>

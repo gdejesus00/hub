@@ -21,6 +21,8 @@ node tools/serve.mjs
 
 Then open <http://localhost:5200/?demo=1>. The `?demo=1` flag loads the made-up content in `sample-content.json`, so you can try everything without signing in.
 
+Test flags work only when the app is served from your own PC. The published app ignores them.
+
 Other flags for testing:
 
 - `?now=2026-11-10T14:50` fakes the clock, to see any time-based screen.
@@ -45,6 +47,14 @@ Edit the Doc and the app shows the change on its next sync. Missing keys hide th
 ## How it's built
 
 Plain HTML, CSS and JavaScript modules with no framework and no build step. A service worker caches the app so it opens offline. The only outside script is Google's sign-in library.
+
+## Security
+
+- `index.html` carries a page security policy (Content-Security-Policy). It allows the app's own files, Google's sign-in library and the Google Drive API, and nothing else. Inline scripts and inline styles are blocked.
+- Because of that, markup never uses `style="..."`. Sizes and positions are written as `data-css="..."` and applied by `applyCss` in `app.js` after each render.
+- Access to Drive is read-only, and the sign-in is kept on the phone only until it runs out or you disconnect.
+- `node --test` fails if the policy is loosened, if a new outside host appears, or if an email address, phone number, user folder path, key or file ID shows up anywhere in the repository. To block your own private words too, list them one per line in a file named `.private_terms` (git ignores it).
+- Changes go on a branch and a pull request, never straight to `main`, because `main` is the published app.
 
 | File | What it does |
 | --- | --- |

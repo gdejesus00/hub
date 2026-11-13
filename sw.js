@@ -1,7 +1,7 @@
 // Offline support: load the app from the network when possible, and from the cache when not.
 // Bump CACHE on every release (keep it in step with APP_VERSION in config.js), so every
 // phone picks up the new files.
-const CACHE = 'hub-v1.0.0';
+const CACHE = 'hub-v1.0.1';
 const APP_FILES = [
   './',
   'index.html',

@@ -8,12 +8,30 @@ import * as r from './routines.js';
 import * as store from './store.js';
 import { DAYS, MONTHS, dateStr, daysBetween, fmtTime, initClock, longDate, now, nowMinutes, parseDate } from './time.js';
 
-initClock(location.search);
 // Dev flags: ?demo=1 loads made-up content, ?demo=broken breaks it on purpose,
 // ?demo=local reads a private file from the dev server. ?now=YYYY-MM-DDTHH:MM fakes the clock.
-const demo = new URLSearchParams(location.search).get('demo');
+// They work only when the app is served from this computer, never on the published site.
+const LOCAL = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+const flags = LOCAL ? location.search : '';
+initClock(flags);
+const demo = new URLSearchParams(flags).get('demo');
 
 const $ = (selector, root = document) => root.querySelector(selector);
+
+// The page's security policy blocks inline style attributes in HTML. Sizes, positions and colour
+// variables travel as data-css instead and are set here, by script, right after each render.
+function applyCss(root) {
+  for (const el of root.querySelectorAll('[data-css]')) {
+    for (const rule of el.dataset.css.split(';')) {
+      const at = rule.indexOf(':');
+      if (at > 0) el.style.setProperty(rule.slice(0, at).trim(), rule.slice(at + 1).trim());
+    }
+  }
+}
+const setHtml = (el, html) => {
+  el.innerHTML = html;
+  applyCss(el);
+};
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -115,7 +133,7 @@ function nowCard(blocks, d, m) {
       <p class="caps"><i class="pip"></i>Now</p>
       <h2>${esc(current.title)}</h2>
       ${current.detail ? `<p>${esc(current.detail)}</p>` : ''}
-      <div class="bar"><i style="width:${(fraction * 100).toFixed(1)}%"></i></div>
+      <div class="bar"><i data-css="width:${(fraction * 100).toFixed(1)}%"></i></div>
       <div class="now-row"><span>${r.fmtDur(current.end - m)} left</span><span>${next ? `Next: ${esc(next.title)} ${fmtTime(next.start)}` : 'Last block today'}</span></div>
       ${cd}
     </section>`;
@@ -144,19 +162,19 @@ function timeline(blocks, m) {
   const end = Math.max(1320, ...blocks.map(b => b.end));
   const pct = value => (((value - start) / (end - start)) * 100).toFixed(2);
   const segments = blocks.map((b, i) =>
-    `<button class="tl-seg kind-${b.kind}${b.end <= m ? ' is-past' : ''}" style="left:${pct(b.start)}%;width:${(((b.end - b.start) / (end - start)) * 100).toFixed(2)}%" data-action="goto" data-target="blk-${i}" aria-label="${esc(b.title)}, ${fmtTime(b.start)} to ${fmtTime(b.end)}"></button>`).join('');
+    `<button class="tl-seg kind-${b.kind}${b.end <= m ? ' is-past' : ''}" data-css="left:${pct(b.start)}%;width:${(((b.end - b.start) / (end - start)) * 100).toFixed(2)}%" data-action="goto" data-target="blk-${i}" aria-label="${esc(b.title)}, ${fmtTime(b.start)} to ${fmtTime(b.end)}"></button>`).join('');
   const ticks = [[360, '6a'], [540, '9a'], [720, '12p'], [900, '3p'], [1080, '6p'], [1260, '9p']]
     .filter(([at]) => at > start && at < end)
-    .map(([at, label]) => `<span style="left:${pct(at)}%">${label}</span>`).join('');
-  const marker = m >= start && m <= end ? `<i class="tl-now" style="left:${pct(m)}%"></i>` : '';
+    .map(([at, label]) => `<span data-css="left:${pct(at)}%">${label}</span>`).join('');
+  const marker = m >= start && m <= end ? `<i class="tl-now" data-css="left:${pct(m)}%"></i>` : '';
   return `<section class="tl" aria-label="Day timeline"><div class="tl-track">${segments}${marker}</div><div class="tl-ticks" aria-hidden="true">${ticks}</div></section>`;
 }
 
 const RING = 2 * Math.PI * 36;
 function ring(fraction, color, center, label) {
   const off = RING * (1 - Math.max(0, Math.min(1, fraction)));
-  return `<div class="ringwrap" style="--rc:var(--${color})">
-    <svg class="ring" viewBox="0 0 84 84" role="img" aria-label="${esc(label)}"><circle class="ring-bg" cx="42" cy="42" r="36"/><circle class="ring-fg" cx="42" cy="42" r="36" transform="rotate(-90 42 42)" stroke-dasharray="${RING.toFixed(1)}" style="--off:${off.toFixed(1)}"/></svg>
+  return `<div class="ringwrap" data-css="--rc:var(--${color})">
+    <svg class="ring" viewBox="0 0 84 84" role="img" aria-label="${esc(label)}"><circle class="ring-bg" cx="42" cy="42" r="36"/><circle class="ring-fg" cx="42" cy="42" r="36" transform="rotate(-90 42 42)" stroke-dasharray="${RING.toFixed(1)}" data-css="--off:${off.toFixed(1)}"/></svg>
     <div class="ring-center" aria-hidden="true">${center}</div>
   </div>`;
 }
@@ -286,7 +304,7 @@ function renderProjects() {
       ${p.status ? `<p>${esc(p.status)}</p>` : ''}
       ${p.next ? `<p class="next">${icon('arrow', 16)}<span>Next: ${esc(p.next)}</span></p>` : ''}
       ${dueHtml(p, d)}
-      ${p.progress != null ? `<div class="bar" role="img" aria-label="${Math.round(p.progress * 100)} percent done"><i style="width:${(p.progress * 100).toFixed(0)}%"></i></div>` : ''}`;
+      ${p.progress != null ? `<div class="bar" role="img" aria-label="${Math.round(p.progress * 100)} percent done"><i data-css="width:${(p.progress * 100).toFixed(0)}%"></i></div>` : ''}`;
     return p.link
       ? `<a class="proj state-${p.state}" href="${esc(p.link)}" target="_blank" rel="noopener noreferrer">${body}</a>`
       : `<article class="proj state-${p.state}">${body}</article>`;
@@ -305,7 +323,7 @@ function tilesHtml() {
   if (!pages.length) return `<section class="card"><p class="empty">${query ? 'No pages match that search.' : 'No pages yet. They come from your content file.'}</p></section>`;
   const groups = [...new Set(pages.map(p => p.group))];
   return groups.map(group => `<section><h2 class="caps">${esc(group)}</h2><div class="tiles">${pages.filter(p => p.group === group).map(p =>
-    `<a class="tile" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer"><span class="tile-ico" style="--t:var(--${TILE_TINT[p.icon] ?? 'work'})">${tileIcon(p.icon)}</span><b>${esc(p.title)}</b><span>${esc(p.desc)}</span></a>`).join('')}</div></section>`).join('');
+    `<a class="tile" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer"><span class="tile-ico" data-css="--t:var(--${TILE_TINT[p.icon] ?? 'work'})">${tileIcon(p.icon)}</span><b>${esc(p.title)}</b><span>${esc(p.desc)}</span></a>`).join('')}</div></section>`).join('');
 }
 
 function renderPages() {
@@ -353,7 +371,7 @@ function renderSettings() {
     </form>
     <div class="setting">
       <p class="label">Workout streak</p>
-      <p class="hint" style="margin:0 0 8px">${r.streak(workouts, now())} day streak, best ${r.bestStreak(workouts)}, ${workouts.length} workout${workouts.length === 1 ? '' : 's'} logged.</p>
+      <p class="hint tight">${r.streak(workouts, now())} day streak, best ${r.bestStreak(workouts)}, ${workouts.length} workout${workouts.length === 1 ? '' : 's'} logged.</p>
       <button class="btn danger" data-action="reset-streak">${state.confirm === 'reset-streak' ? 'Tap again to reset' : 'Reset workout streak'}</button>
     </div>
   </section>
@@ -400,11 +418,11 @@ function renderSheet() {
   }
   const { title, body } = state.sheet === 'evening' ? eveningSheet() : top3Sheet(state.sheet);
   root.hidden = false;
-  root.innerHTML = `<div class="backdrop" data-action="close-sheet"></div>
+  setHtml(root, `<div class="backdrop" data-action="close-sheet"></div>
     <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
       <div class="sheet-head"><h2 id="sheet-title">${title}</h2><button class="iconbtn" data-action="close-sheet" aria-label="Close">${icon('close', 20)}</button></div>
       ${body}
-    </div>`;
+    </div>`);
 }
 
 function openSheet(name) {
@@ -445,7 +463,7 @@ function focusKey() {
 function render() {
   const key = focusKey();
   const view = $('#view');
-  view.innerHTML = PAGES[state.tab]();
+  setHtml(view, PAGES[state.tab]());
   view.dataset.tab = state.tab;
   $('#tabs').innerHTML = TABS.map(([id, label]) => `<button data-action="tab" data-tab="${id}"${state.tab === id ? ' aria-current="page"' : ''}>${icon(id, 22)}${label}</button>`).join('');
   if (key && !document.activeElement?.closest?.('#sheet-root')) $(key)?.focus({ preventScroll: true });
@@ -696,7 +714,7 @@ document.addEventListener('change', event => {
 document.addEventListener('input', event => {
   if (event.target.id !== 'page-search') return;
   state.query = event.target.value;
-  $('#tiles').innerHTML = tilesHtml();
+  setHtml($('#tiles'), tilesHtml());
 });
 
 document.addEventListener('keydown', event => {

@@ -3,3 +3,5 @@ node_modules/
 # Real content never belongs in this repository.
 local-content.txt
 docs/
+# Optional list of private words the repo test also blocks, one per line. Never commit it.
+.private_terms

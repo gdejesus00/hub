@@ -5,51 +5,280 @@
   "headline": "Demo week: this is made-up content for trying the app without signing in.",
   "today": null,
   "weekday": [
-    {"start": "06:00", "end": "07:30", "title": "Morning", "detail": "Coffee, then pack a lunch.", "kind": "home"},
-    {"start": "08:00", "end": "15:30", "title": "Work", "detail": "", "kind": "work"},
-    {"start": "15:30", "end": "15:45", "title": "Shutdown", "detail": "Write tomorrow's top 3.", "kind": "focus"},
-    {"start": "16:00", "end": "17:00", "title": "Run", "detail": "Easy 5k by the river.", "kind": "move"},
-    {"start": "17:00", "end": "18:00", "title": "Dinner", "detail": "Cook something simple.", "kind": "home"},
-    {"start": "18:00", "end": "19:30", "title": "Game night", "detail": "Board games with the family.", "kind": "family"},
-    {"start": "19:30", "end": "22:00", "title": "Free time", "detail": "", "kind": "free"}
+    {
+      "start": "06:00",
+      "end": "07:30",
+      "title": "Morning",
+      "detail": "Coffee, then pack a lunch.",
+      "kind": "home"
+    },
+    {
+      "start": "08:00",
+      "end": "15:30",
+      "title": "Work",
+      "detail": "",
+      "kind": "work"
+    },
+    {
+      "start": "15:30",
+      "end": "15:45",
+      "title": "Shutdown",
+      "detail": "Write tomorrow's top 3.",
+      "kind": "focus"
+    },
+    {
+      "start": "16:00",
+      "end": "17:00",
+      "title": "Run",
+      "detail": "Easy 5k by the river.",
+      "kind": "move"
+    },
+    {
+      "start": "17:00",
+      "end": "18:00",
+      "title": "Dinner",
+      "detail": "Cook something simple.",
+      "kind": "home"
+    },
+    {
+      "start": "18:00",
+      "end": "19:30",
+      "title": "Game night",
+      "detail": "Board games with the family.",
+      "kind": "family"
+    },
+    {
+      "start": "19:30",
+      "end": "22:00",
+      "title": "Free time",
+      "detail": "",
+      "kind": "free"
+    }
   ],
   "weekend": [
-    {"start": "09:00", "end": "11:00", "title": "Garage clear-out", "detail": "Four boxes each weekend.", "kind": "home"},
-    {"start": "11:00", "end": "15:00", "title": "Side projects", "detail": "Whatever is most fun.", "kind": "focus"},
-    {"start": "18:00", "end": "19:30", "title": "Game night", "detail": "", "kind": "family"}
+    {
+      "start": "09:00",
+      "end": "11:00",
+      "title": "Garage clear-out",
+      "detail": "Four boxes each weekend.",
+      "kind": "home"
+    },
+    {
+      "start": "11:00",
+      "end": "15:00",
+      "title": "Side projects",
+      "detail": "Whatever is most fun.",
+      "kind": "focus"
+    },
+    {
+      "start": "18:00",
+      "end": "19:30",
+      "title": "Game night",
+      "detail": "",
+      "kind": "family"
+    }
   ],
-  "countdown": {"label": "Game night with the family", "time": "18:00", "days": "every"},
-  "shutdown": {"time": "15:30", "days": "weekdays"},
-  "cleaning": ["Dishes", "Wipe counters", "Pick up one room", "Take out the trash"],
+  "countdown": {
+    "label": "Game night with the family",
+    "time": "18:00",
+    "days": "every"
+  },
+  "shutdown": {
+    "time": "15:30",
+    "days": "weekdays"
+  },
+  "cleaning": [
+    "Dishes",
+    "Wipe counters",
+    "Pick up one room",
+    "Take out the trash"
+  ],
   "home": {
     "musicUrl": "",
-    "checklist": ["Shoes off, bag down", "Start dinner", "Quick reset while it cooks"]
+    "checklist": [
+      "Shoes off, bag down",
+      "Start dinner",
+      "Quick reset while it cooks"
+    ]
   },
-  "boxes": {"total": 40, "perWeekend": 4},
+  "boxes": {
+    "total": 40,
+    "perWeekend": 4
+  },
   "upcoming": [
-    {"date": "2026-11-14", "title": "Library books due", "kind": "home"},
-    {"date": "2026-11-16", "end": "2026-11-19", "title": "Conference trip", "kind": "work"},
-    {"date": "2026-11-26", "title": "Holiday dinner", "kind": "family"},
-    {"date": "2026-12-05", "title": "Half marathon", "kind": "move"},
-    {"date": "2026-12-20", "title": "Course sign-up closes", "kind": "focus"},
-    {"date": "2027-01-10", "title": "Car service", "kind": "home"}
+    {
+      "date": "2026-11-14",
+      "title": "Library books due",
+      "kind": "home"
+    },
+    {
+      "date": "2026-11-16",
+      "end": "2026-11-19",
+      "title": "Conference trip",
+      "kind": "work",
+      "detail": "Pack on Sunday night. Train leaves at 7:10."
+    },
+    {
+      "date": "2026-11-26",
+      "title": "Holiday dinner",
+      "kind": "family",
+      "detail": "Bring dessert. Dinner is at 5."
+    },
+    {
+      "date": "2026-12-05",
+      "title": "Half marathon",
+      "kind": "move"
+    },
+    {
+      "date": "2026-12-20",
+      "title": "Course sign-up closes",
+      "kind": "focus"
+    },
+    {
+      "date": "2027-01-10",
+      "title": "Car service",
+      "kind": "home"
+    }
   ],
   "projects": [
-    {"name": "Garden shed", "state": "blocked", "status": "Waiting on the lumber delivery.", "next": "Call the yard on Monday."},
-    {"name": "Course application", "state": "waiting", "status": "Form sent, no answer yet.", "next": "Follow up by email.", "due": "2026-11-12"},
-    {"name": "Recipe site", "state": "on-track", "status": "Home page done.", "next": "Add the search box.", "progress": 0.4},
-    {"name": "Half marathon training", "state": "on-track", "status": "Week 6 of 10.", "next": "Long run on Sunday.", "due": "2026-12-05", "progress": 0.6},
-    {"name": "Photo backup", "state": "done", "status": "All albums copied.", "next": "", "link": "https://example.com/"}
+    {
+      "name": "Garden shed",
+      "state": "blocked",
+      "status": "Waiting on the lumber delivery.",
+      "next": "Call the yard on Monday.",
+      "detail": [
+        "The lumber yard promised Thursday, then pushed it back.",
+        "Plan B: use the leftover decking."
+      ],
+      "links": [
+        {
+          "label": "Shed plan",
+          "url": "https://example.com/shed"
+        }
+      ]
+    },
+    {
+      "name": "Course application",
+      "state": "waiting",
+      "status": "Form sent, no answer yet.",
+      "next": "Follow up by email.",
+      "due": "2026-11-12"
+    },
+    {
+      "name": "Recipe site",
+      "state": "on-track",
+      "status": "Home page done.",
+      "next": "Add the search box.",
+      "progress": 0.4,
+      "detail": [
+        "Built with plain HTML and a tiny script.",
+        "Search will filter by ingredient."
+      ],
+      "links": [
+        {
+          "label": "Open the site",
+          "url": "https://example.com/recipes"
+        },
+        {
+          "label": "Notes",
+          "url": "https://example.com/recipes-notes"
+        }
+      ]
+    },
+    {
+      "name": "Half marathon training",
+      "state": "on-track",
+      "status": "Week 6 of 10.",
+      "next": "Long run on Sunday.",
+      "due": "2026-12-05",
+      "progress": 0.6,
+      "detail": "Long run is 14 km. Easy pace."
+    },
+    {
+      "name": "Photo backup",
+      "state": "done",
+      "status": "All albums copied.",
+      "next": "",
+      "link": "https://example.com/"
+    }
   ],
   "pages": [
-    {"group": "One-pagers", "title": "Meal plan", "desc": "This week's dinners", "url": "https://example.com/meals", "icon": "food"},
-    {"group": "One-pagers", "title": "Ideas list", "desc": "Things to try", "url": "https://example.com/ideas", "icon": "idea"},
-    {"group": "One-pagers", "title": "File tree", "desc": "Where things live", "url": "https://example.com/files", "icon": "folder"},
-    {"group": "Workspace", "title": "Shared folder", "desc": "Inbox and results", "url": "https://example.com/shared", "icon": "hive"},
-    {"group": "Workspace", "title": "Handbook", "desc": "Start here", "url": "https://example.com/handbook", "icon": "book"},
-    {"group": "Workspace", "title": "Game plan", "desc": "Design notes", "url": "https://example.com/game", "icon": "game"},
-    {"group": "Workspace", "title": "Sprint plan", "desc": "This week's priorities", "url": "https://example.com/sprint", "icon": "bolt"},
-    {"group": "Apps", "title": "Notes app", "desc": "Drafts and stories", "url": "https://example.com/notes", "icon": "pen"},
-    {"group": "Apps", "title": "Budget sheet", "desc": "Monthly numbers", "url": "https://example.com/budget", "icon": "chart"}
+    {
+      "group": "One-pagers",
+      "title": "Meal plan",
+      "desc": "This week's dinners",
+      "url": "https://example.com/meals",
+      "icon": "food",
+      "detail": [
+        "Updated every Sunday.",
+        "Shopping list is on the second page."
+      ]
+    },
+    {
+      "group": "One-pagers",
+      "title": "Ideas list",
+      "desc": "Things to try",
+      "url": "https://example.com/ideas",
+      "icon": "idea"
+    },
+    {
+      "group": "One-pagers",
+      "title": "File tree",
+      "desc": "Where things live",
+      "url": "https://example.com/files",
+      "icon": "folder"
+    },
+    {
+      "group": "Workspace",
+      "title": "Shared folder",
+      "desc": "Inbox and results",
+      "url": "https://example.com/shared",
+      "icon": "hive"
+    },
+    {
+      "group": "Workspace",
+      "title": "Handbook",
+      "desc": "Start here",
+      "url": "https://example.com/handbook",
+      "icon": "book"
+    },
+    {
+      "group": "Workspace",
+      "title": "Game plan",
+      "desc": "Design notes",
+      "url": "https://example.com/game",
+      "icon": "game"
+    },
+    {
+      "group": "Workspace",
+      "title": "Sprint plan",
+      "desc": "This week's priorities",
+      "url": "https://example.com/sprint",
+      "icon": "bolt"
+    },
+    {
+      "group": "Apps",
+      "title": "Notes app",
+      "desc": "Drafts and stories",
+      "url": "https://example.com/notes",
+      "icon": "pen"
+    },
+    {
+      "group": "Apps",
+      "title": "Budget sheet",
+      "desc": "Monthly numbers",
+      "url": "https://example.com/budget",
+      "icon": "chart"
+    }
+  ],
+  "dispatch": [
+    {
+      "name": "Harbor Morning",
+      "url": "./sample-dispatch/morning/"
+    },
+    {
+      "name": "Tech Notes",
+      "url": "./sample-dispatch/tech/"
+    }
   ]
 }

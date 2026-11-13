@@ -44,6 +44,21 @@ const kind = value => (KINDS.includes(value) ? value : 'free');
 const days = value => (['every', 'weekdays', 'weekends'].includes(value) ? value : 'every');
 const count = value => (Number.isFinite(Number(value)) && Number(value) > 0 ? Math.floor(Number(value)) : 0);
 
+// "More details" text: one string or a list of strings, trimmed, empty ones dropped.
+const lines = value => (typeof value === 'string' ? value.split(/\n+/) : list(value)).map(text).filter(Boolean).slice(0, 12);
+// Labelled links shown when a card opens. Only http(s) links are kept.
+const links = value => list(value)
+  .map(item => ({ label: text(item?.label), url: link(item?.url) }))
+  .filter(item => item.url)
+  .map(item => ({ ...item, label: item.label || new URL(item.url).hostname.replace(/^www\./, '') }))
+  .slice(0, 8);
+// A paper's address: a full https:// address, or ./folder/ when the app is run from this PC.
+const paperUrl = value => {
+  const url = text(value);
+  if (!/^(https?:\/\/|\.\/)/i.test(url)) return '';
+  return url.endsWith('/') ? url : `${url}/`;
+};
+
 function block(raw) {
   const start = minutesOf(raw?.start);
   const end = minutesOf(raw?.end);
@@ -82,6 +97,7 @@ export function normalize(raw) {
         end: isDate(item.end) && item.end >= item.date ? item.end : item.date,
         title: text(item.title),
         kind: kind(item.kind),
+        detail: text(item.detail),
       }))
       .sort((a, b) => a.date.localeCompare(b.date)),
     projects: list(d.projects)
@@ -94,6 +110,8 @@ export function normalize(raw) {
         due: isDate(item.due) ? item.due : '',
         progress: typeof item.progress === 'number' ? Math.max(0, Math.min(1, item.progress)) : null,
         link: link(item.link),
+        detail: lines(item.detail),
+        links: links(item.links),
       })),
     pages: list(d.pages)
       .filter(item => item && text(item.title) && link(item.url))
@@ -103,7 +121,13 @@ export function normalize(raw) {
         desc: text(item.desc),
         url: link(item.url),
         icon: text(item.icon).toLowerCase(),
+        detail: lines(item.detail),
       })),
+    // The Dispatch papers shown on Today: { name, url }. The app reads <url>data/latest.json.
+    dispatch: list(d.dispatch)
+      .map(item => ({ name: text(item?.name), url: paperUrl(item?.url) }))
+      .filter(item => item.name && item.url)
+      .slice(0, 4),
   };
 }
 

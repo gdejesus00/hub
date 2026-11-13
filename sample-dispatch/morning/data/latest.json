@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "date": "2026-11-10",
+  "lead": {
+    "headline": "Harbor talks end with a cargo deal and no date for the bridge",
+    "dek": "Both sides say ferries run on time from Monday. The bridge repair waits on a survey.",
+    "sources": [
+      {
+        "name": "Harbor Gazette: talks end",
+        "url": "https://example.com/gazette/talks"
+      },
+      {
+        "name": "Council notes",
+        "url": "https://example.com/council/notes"
+      }
+    ]
+  },
+  "bottom_line": "Two days of talks at the harbor ended with an agreement on cargo schedules and nothing on the bridge. The council meets again next week. This paper is made-up demo content."
+}

@@ -1,12 +1,13 @@
 // Startup, the four pages, the sheets and every tap. Rendering is plain template strings:
 // each page is rebuilt from the saved content plus what's stored on the phone.
-import { APP_VERSION, WHATS_NEW } from './config.js';
+import { APP_NAME, APP_VERSION, CONTENT_FILE, WHATS_NEW } from './config.js';
 import { dayPlan, normalize, parseRaw } from './content.js';
+import * as dispatch from './dispatch.js';
 import * as drive from './drive.js';
 import { icon, tileIcon } from './icons.js';
 import * as r from './routines.js';
 import * as store from './store.js';
-import { DAYS, MONTHS, dateStr, daysBetween, fmtTime, initClock, longDate, now, nowMinutes, parseDate } from './time.js';
+import { DAYS, MONTHS, addDays, dateStr, daysBetween, fmtTime, initClock, longDate, now, nowMinutes, parseDate } from './time.js';
 
 // Dev flags: ?demo=1 loads made-up content, ?demo=broken breaks it on purpose,
 // ?demo=local reads a private file from the dev server. ?now=YYYY-MM-DDTHH:MM fakes the clock.
@@ -48,6 +49,13 @@ const state = {
   popped: '',
   confirm: '',
   pendingBoxes: null,
+  open: new Set(), // ids of the cards that are open (kept while the app is open, not saved)
+  justOpened: '', // the card that just opened, so only it plays the opening animation
+  ring: '', // which progress ring's details are showing: reset, streak or boxes
+  counter: '', // which project count's list is showing
+  papers: [], // the Dispatch papers read from the web, in the order the content file lists them
+  papersAt: 0,
+  papersBusy: false,
 };
 
 // ---------- what's stored on the phone ----------
@@ -72,6 +80,7 @@ function loadSaved() {
     state.content = normalize(saved.data);
     state.hasContent = true;
     state.fetchedAt = saved.fetchedAt || 0;
+    state.papers = dispatch.cached(state.content.dispatch);
   }
   state.error = saved?.error || '';
 }
@@ -85,11 +94,53 @@ function applyText(text) {
     state.hasContent = true;
     state.fetchedAt = Date.now();
     state.error = '';
+    state.papers = dispatch.cached(state.content.dispatch);
     store.write('content', { data, fetchedAt: state.fetchedAt, error: '' });
   } catch (error) {
     state.error = error.message;
     store.write('content', { ...(store.read('content', null) ?? {}), error: error.message });
   }
+}
+
+// ---------- cards that open ----------
+// Every card is built the same way: a head that is always showing, then (when open) a body with
+// more detail. A transparent button laid over the head does the opening, so the head can keep its
+// real headings and text, and any link or checkbox inside it still works.
+const KIND_LABEL = { work: 'Work', move: 'Move', home: 'Home', family: 'Family', focus: 'Focus', free: 'Free time' };
+const isOpen = id => state.open.has(id);
+const slug = text => text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+function xcard(id, { tag = 'section', cls = '', label, head, mid = '', body }) {
+  const open = isOpen(id);
+  return `<${tag} class="x${open ? ' is-open' : ''}${cls ? ` ${cls}` : ''}" id="card-${id}">
+    <div class="xhead">${head}<button class="xtoggle" type="button" data-action="expand" data-id="${id}" aria-expanded="${open}"${open ? ` aria-controls="x-${id}"` : ''} aria-label="${esc(label)}"></button><span class="chev">${icon('chevron', 18)}</span></div>
+    ${mid}
+    ${open ? `<div class="xbody${state.justOpened === id ? ' just' : ''}" id="x-${id}">${body}</div>` : ''}
+  </${tag}>`;
+}
+
+// A short list of label and value pairs for the open part of a card.
+const facts = rows => `<dl class="facts">${rows.filter(Boolean).map(([label, value]) => `<dt>${esc(label)}</dt><dd>${value}</dd>`).join('')}</dl>`;
+const xlinks = list => (list.length
+  ? `<div class="xlinks">${list.map(item => `<a class="xlink" href="${esc(item.url)}" target="_blank" rel="noopener noreferrer">${esc(item.label)}${icon('external', 14)}</a>`).join('')}</div>`
+  : '');
+const xlist = lines => (lines.length ? `<ul class="xlist">${lines.map(line => `<li>${esc(line)}</li>`).join('')}</ul>` : '');
+
+// The dates shown inside cards: "Sun, Nov 15".
+const shortDate = date => `${DAYS[date.getDay()].slice(0, 3)}, ${MONTHS[date.getMonth()]} ${date.getDate()}`;
+
+function blockFacts(block, m, blocks) {
+  const status = block.end <= m ? 'Finished'
+    : block.start <= m ? `In progress: ${Math.round(((m - block.start) / (block.end - block.start)) * 100)}% done, ${r.fmtDur(block.end - m)} left`
+    : `Starts in ${r.fmtDur(block.start - m)}`;
+  const after = blocks[blocks.indexOf(block) + 1];
+  return facts([
+    ['Time', `${fmtTime(block.start)} to ${fmtTime(block.end)}`],
+    ['Length', r.fmtDur(block.end - block.start)],
+    ['Status', status],
+    ['Type', KIND_LABEL[block.kind]],
+    ['Then', after ? `${esc(after.title)} at ${fmtTime(after.start)}` : 'Last block of the day'],
+  ]);
 }
 
 // ---------- today ----------
@@ -105,7 +156,7 @@ function syncChip() {
 function todayHeader(d) {
   const part = d.getHours() < 12 ? 'morning' : d.getHours() < 17 ? 'afternoon' : 'evening';
   const name = state.content.name ? `, ${esc(state.content.name)}` : '';
-  return `<header class="head"><div><p class="caps">${esc(longDate(d))}</p><h1>Good ${part}${name}</h1></div>${syncChip()}</header>`;
+  return `<header class="head"><div><p class="caps"><span class="brand">${icon('hive', 14)}${esc(APP_NAME)}</span>${esc(longDate(d))}</p><h1>Good ${part}${name}</h1></div>${syncChip()}</header>`;
 }
 
 function countdownHtml(blocks, d) {
@@ -119,7 +170,7 @@ function welcomeCard() {
   return `<section class="now kind-home">
     <p class="caps"><i class="pip"></i>Welcome</p>
     <h2>Less in your head. More on the page.</h2>
-    <p class="tag">Connect Google Drive to load your hub.</p>
+    <p class="tag">Connect Google Drive to load your ${esc(APP_NAME)}.</p>
     <button class="btn primary wide" data-action="sync">Connect Google Drive</button>
   </section>`;
 }
@@ -129,31 +180,43 @@ function nowCard(blocks, d, m) {
   const cd = countdownHtml(blocks, d);
   if (current) {
     const fraction = (m - current.start) / (current.end - current.start);
-    return `<section class="now kind-${current.kind}" aria-label="Happening now">
-      <p class="caps"><i class="pip"></i>Now</p>
+    return xcard('now', {
+      cls: `now kind-${current.kind}`,
+      label: `More about ${current.title}`,
+      head: `<p class="caps"><i class="pip"></i>Now</p>
       <h2>${esc(current.title)}</h2>
       ${current.detail ? `<p>${esc(current.detail)}</p>` : ''}
       <div class="bar"><i data-css="width:${(fraction * 100).toFixed(1)}%"></i></div>
       <div class="now-row"><span>${r.fmtDur(current.end - m)} left</span><span>${next ? `Next: ${esc(next.title)} ${fmtTime(next.start)}` : 'Last block today'}</span></div>
-      ${cd}
-    </section>`;
+      ${cd}`,
+      body: blockFacts(current, m, blocks),
+    });
   }
   if (next) {
-    return `<section class="now kind-${next.kind}" aria-label="Coming next">
-      <p class="caps"><i class="pip"></i>Next</p>
+    return xcard('now', {
+      cls: `now kind-${next.kind}`,
+      label: `More about ${next.title}`,
+      head: `<p class="caps"><i class="pip"></i>Next</p>
       <h2>${esc(next.title)}</h2>
       ${next.detail ? `<p>${esc(next.detail)}</p>` : ''}
       <div class="now-row"><span>Starts in ${r.fmtDur(next.start - m)}</span><span>${fmtTime(next.start)} to ${fmtTime(next.end)}</span></div>
-      ${cd}
-    </section>`;
+      ${cd}`,
+      body: blockFacts(next, m, blocks),
+    });
   }
   const tomorrow = dayPlan(state.content, new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)).blocks[0];
-  return `<section class="now kind-free" aria-label="Day summary">
-    <p class="caps"><i class="pip"></i>${done ? 'Today' : 'Open day'}</p>
+  return xcard('now', {
+    cls: 'now kind-free',
+    label: 'More about today',
+    head: `<p class="caps"><i class="pip"></i>${done ? 'Today' : 'Open day'}</p>
     <h2>${done ? "Day's done" : 'Nothing scheduled'}</h2>
     ${tomorrow ? `<p>Tomorrow starts with ${esc(tomorrow.title)} at ${fmtTime(tomorrow.start)}.</p>` : ''}
-    ${cd}
-  </section>`;
+    ${cd}`,
+    body: facts([
+      ['Blocks today', String(blocks.length)],
+      ['Tomorrow', tomorrow ? `${esc(tomorrow.title)}, ${fmtTime(tomorrow.start)} to ${fmtTime(tomorrow.end)}` : 'Nothing planned'],
+    ]),
+  });
 }
 
 function timeline(blocks, m) {
@@ -162,7 +225,7 @@ function timeline(blocks, m) {
   const end = Math.max(1320, ...blocks.map(b => b.end));
   const pct = value => (((value - start) / (end - start)) * 100).toFixed(2);
   const segments = blocks.map((b, i) =>
-    `<button class="tl-seg kind-${b.kind}${b.end <= m ? ' is-past' : ''}" data-css="left:${pct(b.start)}%;width:${(((b.end - b.start) / (end - start)) * 100).toFixed(2)}%" data-action="goto" data-target="blk-${i}" aria-label="${esc(b.title)}, ${fmtTime(b.start)} to ${fmtTime(b.end)}"></button>`).join('');
+    `<button class="tl-seg kind-${b.kind}${b.end <= m ? ' is-past' : ''}" data-css="left:${pct(b.start)}%;width:${(((b.end - b.start) / (end - start)) * 100).toFixed(2)}%" data-action="goto" data-target="card-blk-${i}" data-open="blk-${i}" aria-label="${esc(b.title)}, ${fmtTime(b.start)} to ${fmtTime(b.end)}"></button>`).join('');
   const ticks = [[360, '6a'], [540, '9a'], [720, '12p'], [900, '3p'], [1080, '6p'], [1260, '9p']]
     .filter(([at]) => at > start && at < end)
     .map(([at, label]) => `<span data-css="left:${pct(at)}%">${label}</span>`).join('');
@@ -171,13 +234,17 @@ function timeline(blocks, m) {
 }
 
 const RING = 2 * Math.PI * 36;
-function ring(fraction, color, center, label) {
+function ring(fraction, color, center, label, toggle = '') {
   const off = RING * (1 - Math.max(0, Math.min(1, fraction)));
   return `<div class="ringwrap" data-css="--rc:var(--${color})">
     <svg class="ring" viewBox="0 0 84 84" role="img" aria-label="${esc(label)}"><circle class="ring-bg" cx="42" cy="42" r="36"/><circle class="ring-fg" cx="42" cy="42" r="36" transform="rotate(-90 42 42)" stroke-dasharray="${RING.toFixed(1)}" data-css="--off:${off.toFixed(1)}"/></svg>
     <div class="ring-center" aria-hidden="true">${center}</div>
+    ${toggle}
   </div>`;
 }
+
+const ringToggle = (key, label) => `<button class="xtoggle" type="button" data-action="ring" data-ring="${key}" aria-expanded="${state.ring === key}" aria-label="${esc(label)}"></button>`;
+const ringChev = key => (state.ring === key ? `<span class="chev">${icon('chevron', 14)}</span>` : '');
 
 function rings(d) {
   const c = state.content;
@@ -193,33 +260,80 @@ function rings(d) {
   const allSorted = boxTotal > 0 && sorted >= boxTotal;
   const estimate = r.boxEstimate(sorted, boxTotal, c.boxes.perWeekend, d);
   return `<section class="rings" aria-label="Progress">
-    <div class="ringcard">
-      ${ring(total ? done / total : 0, total && done === total ? 'ok' : 'home', `<b>${total ? `${done}/${total}` : '0'}</b><small>reset</small>`, `15-minute reset: ${done} of ${total} done`)}
-      <button class="mini" data-action="goto" data-target="reset-list">${total && done === total ? 'All done' : 'Open list'}</button>
+    <div class="ringcard${state.ring === 'reset' ? ' is-open' : ''}">
+      ${ring(total ? done / total : 0, total && done === total ? 'ok' : 'home', `<b>${total ? `${done}/${total}` : '0'}</b><small>reset</small>`, `15-minute reset: ${done} of ${total} done`, ringToggle('reset', 'Details about the 15-minute reset'))}
+      <button class="mini" data-action="goto" data-target="card-reset" data-open="reset">${total && done === total ? 'All done' : 'Open list'}</button>
       <p class="sub">${total ? (done === total ? 'Reset complete' : `${total - done} left today`) : 'No list yet'}</p>
+      ${ringChev('reset')}
     </div>
-    <div class="ringcard">
-      ${ring(week / 5, logged ? 'ok' : 'move', `<b>${streak}</b><small>day streak</small>`, `Workout streak: ${streak} ${streak === 1 ? 'day' : 'days'}. ${week} of 5 this week.`)}
+    <div class="ringcard${state.ring === 'streak' ? ' is-open' : ''}">
+      ${ring(week / 5, logged ? 'ok' : 'move', `<b>${streak}</b><small>day streak</small>`, `Workout streak: ${streak} ${streak === 1 ? 'day' : 'days'}. ${week} of 5 this week.`, ringToggle('streak', 'Details about your workout streak'))}
       <button class="mini${logged ? ' is-on' : ''}" data-action="workout" aria-pressed="${logged}">${logged ? `${icon('check', 14)}Done` : 'Done today'}</button>
       <p class="sub">Best ${r.bestStreak(workouts)}</p>
+      ${ringChev('streak')}
     </div>
-    <div class="ringcard">
-      ${ring(boxTotal ? sorted / boxTotal : 0, allSorted ? 'ok' : 'focus', `<b>${boxTotal ? `${sorted}/${boxTotal}` : sorted}</b><small>sorted</small>`, `Boxes sorted: ${sorted}${boxTotal ? ` of ${boxTotal}` : ''}`)}
+    <div class="ringcard${state.ring === 'boxes' ? ' is-open' : ''}">
+      ${ring(boxTotal ? sorted / boxTotal : 0, allSorted ? 'ok' : 'focus', `<b>${boxTotal ? `${sorted}/${boxTotal}` : sorted}</b><small>sorted</small>`, `Boxes sorted: ${sorted}${boxTotal ? ` of ${boxTotal}` : ''}`, ringToggle('boxes', 'Details about the boxes'))}
       <div class="stepper">
         <button class="mini" data-action="box" data-delta="-1" aria-label="One fewer box sorted">${icon('minus', 16)}</button>
         <button class="mini" data-action="box" data-delta="1" aria-label="One more box sorted">${icon('plus', 16)}</button>
       </div>
       <p class="sub">${allSorted ? `All ${boxTotal} sorted` : estimate ? `Done about <span class="nowrap">${estimate}</span>` : 'Boxes'}</p>
+      ${ringChev('boxes')}
     </div>
-  </section>`;
+  </section>${ringPanel(d, { ticks, total, done, workouts, streak, week, boxTotal, sorted, estimate })}`;
+}
+
+// The details for whichever ring is open, shown under the three rings.
+function ringPanel(d, v) {
+  const c = state.content;
+  if (!state.ring) return '';
+  let title;
+  let body;
+  if (state.ring === 'reset') {
+    const left = c.cleaning.filter(item => !v.ticks[item]);
+    title = '15-minute reset';
+    body = `${facts([
+      ['Done', v.total ? `${v.done} of ${v.total}` : 'No list yet'],
+      ['Left', left.length ? left.map(esc).join(', ') : v.total ? 'All done' : 'Nothing'],
+      ['Clears', 'Every night'],
+    ])}<button class="btn wide" data-action="goto" data-target="card-reset" data-open="reset">Open the list</button>`;
+  } else if (state.ring === 'streak') {
+    const days = [6, 5, 4, 3, 2, 1, 0].map(back => addDays(d, -back));
+    const on = days.filter(day => v.workouts.includes(dateStr(day))).length;
+    title = 'Workout streak';
+    body = `${facts([
+      ['Streak', `${v.streak} ${v.streak === 1 ? 'day' : 'days'}`],
+      ['Best', `${r.bestStreak(v.workouts)} days`],
+      ['This week', `${v.week} of 5`],
+      ['Logged in all', String(v.workouts.length)],
+    ])}<div class="weekdots" role="img" aria-label="Last seven days: ${on} workouts">${days.map((day, i) =>
+      `<span class="wd${v.workouts.includes(dateStr(day)) ? ' on' : ''}${i === 6 ? ' today' : ''}"><i></i>${DAYS[day.getDay()][0]}</span>`).join('')}</div>`;
+  } else {
+    const left = v.boxTotal ? Math.max(0, v.boxTotal - v.sorted) : 0;
+    const per = c.boxes.perWeekend;
+    title = 'Boxes';
+    body = facts([
+      ['Sorted', v.boxTotal ? `${v.sorted} of ${v.boxTotal}` : String(v.sorted)],
+      v.boxTotal ? ['Left', String(left)] : null,
+      per ? ['Pace', `${per} a weekend`] : null,
+      per && left ? ['Weekends to go', String(Math.ceil(left / per))] : null,
+      v.estimate ? ['Done about', esc(v.estimate)] : null,
+    ]);
+  }
+  return `<section class="card ringpanel" id="ring-panel"><div class="card-head"><h2 class="caps">${title}</h2><button class="link" data-action="ring" data-ring="${state.ring}">Close</button></div>${body}</section>`;
 }
 
 function blockList(blocks, m) {
   if (!blocks.length) return '';
-  const rows = blocks.map((b, i) => `<li id="blk-${i}" class="blk kind-${b.kind}${b.end <= m ? ' is-past' : ''}${b.start <= m && m < b.end ? ' is-now' : ''}">
-    <time>${fmtTime(b.start)}</time><i class="pip"></i>
-    <div><b>${esc(b.title)}</b>${b.detail ? `<span>${esc(b.detail)}</span>` : ''}</div>
-  </li>`).join('');
+  const rows = blocks.map((b, i) => xcard(`blk-${i}`, {
+    tag: 'li',
+    cls: `blk kind-${b.kind}${b.end <= m ? ' is-past' : ''}${b.start <= m && m < b.end ? ' is-now' : ''}`,
+    label: `More about ${b.title}`,
+    head: `<time>${fmtTime(b.start)}</time><i class="pip"></i>
+    <div><b>${esc(b.title)}</b>${b.detail ? `<span class="blk-detail">${esc(b.detail)}</span>` : ''}</div>`,
+    body: blockFacts(b, m, blocks),
+  })).join('');
   return `<section class="card"><h2 class="caps">Today's plan</h2><ol class="blocks">${rows}</ol></section>`;
 }
 
@@ -228,32 +342,94 @@ function checkItem(list, key, checked, label = key) {
   return `<li><label class="chk${state.popped === id ? ' just' : ''}"><input type="checkbox" data-list="${list}" data-item="${esc(key)}"${checked ? ' checked' : ''}><span class="box">${icon('check', 16)}</span><span class="txt">${esc(label)}</span></label></li>`;
 }
 
-function top3Card() {
+const DAYS_LABEL = { every: 'every day', weekdays: 'weekdays', weekends: 'weekends' };
+
+function top3Card(d) {
   const top = getTop3();
   const shutdown = state.content.shutdown;
   const items = top.lines.map((line, i) => (line ? checkItem('top3', String(i), top.ticks[i], line) : '')).join('');
   const empty = shutdown ? `Set at ${fmtTime(shutdown.time).replace(/ [AP]M$/, '')} shutdown` : 'Nothing set for today yet';
-  return `<section class="card"><div class="card-head"><h2 class="caps">Top 3 today</h2><button class="link" data-action="sheet" data-sheet="top3">Edit</button></div>
-    ${items ? `<ul class="checks">${items}</ul>` : `<p class="empty">${empty}</p>`}</section>`;
+  const target = r.nextWorkday(d);
+  const later = getTop3(dateStr(target)).lines.filter(Boolean);
+  const set = top.lines.filter(Boolean).length;
+  const ticked = top.lines.filter((line, i) => line && top.ticks[i]).length;
+  return xcard('top3', {
+    cls: 'card',
+    label: 'More about your top 3',
+    head: '<div class="card-head"><h2 class="caps">Top 3 today</h2><button class="link" data-action="sheet" data-sheet="top3">Edit</button></div>',
+    mid: items ? `<ul class="checks">${items}</ul>` : `<p class="empty">${empty}</p>`,
+    body: facts([
+      ['Done', set ? `${ticked} of ${set}` : 'Nothing set yet'],
+      [daysBetween(d, target) === 1 ? 'Tomorrow' : DAYS[target.getDay()], later.length ? later.map(esc).join('<br>') : 'Not written yet. Write them at shutdown.'],
+      shutdown ? ['Shutdown', `${fmtTime(shutdown.time)}, ${DAYS_LABEL[shutdown.days]}`] : null,
+    ]),
+  });
 }
 
 function resetCard() {
   const items = state.content.cleaning;
   if (!items.length) return '';
   const ticks = getChecks().reset ?? {};
-  return `<section class="card" id="reset-list"><h2 class="caps">15-minute reset</h2><ul class="checks">${items.map(item => checkItem('reset', item, ticks[item])).join('')}</ul></section>`;
+  const left = items.filter(item => !ticks[item]);
+  return xcard('reset', {
+    cls: 'card',
+    label: 'More about the 15-minute reset',
+    head: '<h2 class="caps">15-minute reset</h2>',
+    mid: `<ul class="checks">${items.map(item => checkItem('reset', item, ticks[item])).join('')}</ul>`,
+    body: facts([
+      ['Done', `${items.length - left.length} of ${items.length}`],
+      ['Left', left.length ? left.map(esc).join(', ') : 'All done'],
+      ['Clears', 'Every night'],
+    ]),
+  });
 }
 
 function upcomingCard(d) {
   const items = r.upcoming(state.content.upcoming, d).slice(0, 5);
   if (!items.length) return '';
-  const rows = items.map(item => {
+  const rows = items.map((item, i) => {
     const start = parseDate(item.date);
     const end = parseDate(item.end);
-    const through = item.end !== item.date ? `, through ${MONTHS[end.getMonth()]} ${end.getDate()}` : '';
-    return `<li class="up kind-${item.kind}"><div class="cal"><small>${MONTHS[start.getMonth()]}</small><b>${start.getDate()}</b></div><div class="up-main"><b>${esc(item.title)}</b><span>${item.when}${through}</span></div></li>`;
+    const ranged = item.end !== item.date;
+    const through = ranged ? `, through ${MONTHS[end.getMonth()]} ${end.getDate()}` : '';
+    return xcard(`up-${i}`, {
+      tag: 'li',
+      cls: `up kind-${item.kind}`,
+      label: `More about ${item.title}`,
+      head: `<div class="cal"><small>${MONTHS[start.getMonth()]}</small><b>${start.getDate()}</b></div><div class="up-main"><b>${esc(item.title)}</b><span>${item.when}${through}</span></div>`,
+      body: `${facts([
+        ['When', ranged ? `${shortDate(start)} to ${shortDate(end)}` : shortDate(start)],
+        ranged ? ['Length', `${daysBetween(start, end) + 1} days`] : null,
+        ['Away', item.days < 0 ? 'Happening now' : item.when],
+        ['Type', KIND_LABEL[item.kind]],
+      ])}${item.detail ? `<p class="xnote">${esc(item.detail)}</p>` : ''}`,
+    });
   }).join('');
   return `<section class="card"><h2 class="caps">Coming up</h2><ul>${rows}</ul></section>`;
+}
+
+// The Dispatch line: one headline per paper. Open one for the summary and the sources it was written from.
+function dispatchCard() {
+  const entries = state.content.dispatch;
+  if (!entries.length) return '';
+  const papers = state.papers.length === entries.length ? state.papers : dispatch.cached(entries);
+  const rows = papers.map(({ entry, paper, failed }, i) => {
+    if (!paper) {
+      const message = state.papersBusy ? 'Loading...' : failed ? "Couldn't load it. Tap to try again." : 'Tap to load.';
+      return `<li><button class="dprow" type="button" data-action="dispatch-retry"><span class="dp-name">${esc(entry.name)}</span><span class="dp-line">${message}</span></button></li>`;
+    }
+    const old = Boolean(paper.date) && paper.date !== today();
+    const note = paper.date ? (old ? `Edition of ${shortDate(parseDate(paper.date))}` : 'Today') : '';
+    const sources = paper.sources.length ? `<p class="caps tiny">Sources</p>${xlinks(paper.sources.map(s => ({ label: s.name, url: s.url })))}` : '';
+    return xcard(`dp-${i}`, {
+      tag: 'li',
+      cls: 'dp',
+      label: `More about the ${entry.name} headline`,
+      head: `<span class="dp-name">${esc(entry.name)}${note ? `<small class="${old || failed ? 'is-old' : ''}">${esc(note)}${failed ? ', saved copy' : ''}</small>` : ''}</span><b class="dp-line">${esc(paper.headline)}</b>`,
+      body: `${paper.dek ? `<p class="xnote">${esc(paper.dek)}</p>` : ''}${paper.bottom ? `<p class="xnote">${esc(paper.bottom)}</p>` : ''}${sources}<a class="btn wide" href="${esc(dispatch.paperPage(entry))}" target="_blank" rel="noopener noreferrer">Open ${esc(entry.name)}${icon('external', 16)}</a>`,
+    });
+  }).join('');
+  return `<section class="card dispatch"><h2 class="caps">Dispatch</h2><ul class="dplist">${rows}</ul></section>`;
 }
 
 function renderToday() {
@@ -269,7 +445,8 @@ function renderToday() {
     state.hasContent ? nowCard(plan.blocks, d, m) : welcomeCard(),
     timeline(plan.blocks, m),
     rings(d),
-    top3Card(),
+    dispatchCard(),
+    top3Card(d),
     blockList(plan.blocks, m),
     resetCard(),
     upcomingCard(d),
@@ -289,41 +466,75 @@ function dueHtml(project, d) {
   return `<span class="due${n <= 3 ? ' is-urgent' : ''}">Due ${date}, ${when}</span>`;
 }
 
+function projectCard(p, d) {
+  const id = `p-${slug(p.name)}`;
+  const due = p.due ? parseDate(p.due) : null;
+  const n = due ? daysBetween(d, due) : 0;
+  const web = [...(p.link && !p.links.some(item => item.url === p.link) ? [{ label: 'Open', url: p.link }] : []), ...p.links];
+  const updated = state.content.updated && !Number.isNaN(new Date(state.content.updated).getTime()) ? stamp(new Date(state.content.updated)) : '';
+  return xcard(id, {
+    tag: 'article',
+    cls: `proj state-${p.state}`,
+    label: `More about ${p.name}`,
+    head: `<div class="proj-top"><b>${esc(p.name)}</b><span class="state">${STATE_LABEL[p.state]}</span></div>
+      ${p.status ? `<p>${esc(p.status)}</p>` : ''}
+      ${p.next ? `<p class="next">${icon('arrow', 16)}<span>Next: ${esc(p.next)}</span></p>` : ''}
+      ${dueHtml(p, d)}
+      ${p.progress != null ? `<div class="bar" role="img" aria-label="${Math.round(p.progress * 100)} percent done"><i data-css="width:${(p.progress * 100).toFixed(0)}%"></i></div>` : ''}`,
+    body: `${xlist(p.detail)}${facts([
+      ['State', STATE_LABEL[p.state]],
+      p.progress != null ? ['Progress', `${Math.round(p.progress * 100)}%`] : null,
+      due ? ['Due', `${shortDate(due)}, ${p.state === 'done' ? 'done' : n < 0 ? `${-n} day${n === -1 ? '' : 's'} late` : r.relDay(n)}`] : null,
+      updated ? ['Info from', `your content file, ${esc(updated)}`] : null,
+    ])}${xlinks(web)}`,
+  });
+}
+
 function renderProjects() {
   const d = now();
   const all = r.sortProjects(state.content.projects);
   const head = '<header class="head"><h1>Projects</h1></header>';
   if (!all.length) return `${head}<section class="card"><p class="empty">No projects yet. They come from your content file.</p></section>`;
   const counters = ['on-track', 'waiting', 'blocked', 'done'].map(s =>
-    `<div class="counter state-${s}"><b>${all.filter(p => p.state === s).length}</b><span>${STATE_LABEL[s]}</span></div>`).join('');
+    `<button class="counter state-${s}${state.counter === s ? ' is-open' : ''}" type="button" data-action="counter" data-counter="${s}" aria-expanded="${state.counter === s}"><b>${all.filter(p => p.state === s).length}</b><span>${STATE_LABEL[s]}</span></button>`).join('');
+  const names = state.counter ? all.filter(p => p.state === state.counter) : [];
+  const panel = state.counter
+    ? `<section class="card counterpanel"><div class="card-head"><h2 class="caps">${STATE_LABEL[state.counter]}</h2><button class="link" data-action="counter" data-counter="${state.counter}">Close</button></div>${names.length
+      ? names.map(p => `<button class="rowbtn" type="button" data-action="open-project" data-id="p-${slug(p.name)}"><b>${esc(p.name)}</b><span>${esc(p.next || p.status)}</span></button>`).join('')
+      : '<p class="empty">Nothing here.</p>'}</section>`
+    : '';
   const filters = ['all', 'blocked', 'waiting', 'on-track', 'done'].map(f =>
     `<button class="chip" data-action="filter" data-filter="${f}" aria-pressed="${state.filter === f}">${f === 'all' ? 'All' : STATE_LABEL[f]}</button>`).join('');
   const shown = state.filter === 'all' ? all : all.filter(p => p.state === state.filter);
-  const cards = shown.map(p => {
-    const body = `<div class="proj-top"><b>${esc(p.name)}</b><span class="state">${STATE_LABEL[p.state]}</span></div>
-      ${p.status ? `<p>${esc(p.status)}</p>` : ''}
-      ${p.next ? `<p class="next">${icon('arrow', 16)}<span>Next: ${esc(p.next)}</span></p>` : ''}
-      ${dueHtml(p, d)}
-      ${p.progress != null ? `<div class="bar" role="img" aria-label="${Math.round(p.progress * 100)} percent done"><i data-css="width:${(p.progress * 100).toFixed(0)}%"></i></div>` : ''}`;
-    return p.link
-      ? `<a class="proj state-${p.state}" href="${esc(p.link)}" target="_blank" rel="noopener noreferrer">${body}</a>`
-      : `<article class="proj state-${p.state}">${body}</article>`;
-  }).join('');
-  return `${head}<section class="counters" aria-label="Project counts">${counters}</section>
+  const cards = shown.map(p => projectCard(p, d)).join('');
+  return `${head}<section class="counters" aria-label="Project counts">${counters}</section>${panel}
     <div class="filters" role="group" aria-label="Filter projects">${filters}</div>
     ${cards || '<section class="card"><p class="empty">Nothing in this group.</p></section>'}`;
 }
 
 // ---------- pages ----------
-const TILE_TINT = { food: 'family', idea: 'focus', folder: 'work', hive: 'focus', book: 'home', game: 'move', bolt: 'focus', pen: 'work' };
+const TILE_TINT = { food: 'family', idea: 'focus', folder: 'work', hive: 'focus', book: 'home', game: 'move', bolt: 'focus', pen: 'work', news: 'family' };
+
+const hostOf = url => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return '';
+  }
+};
 
 function tilesHtml() {
   const query = state.query.trim().toLowerCase();
   const pages = state.content.pages.filter(p => !query || p.title.toLowerCase().includes(query));
   if (!pages.length) return `<section class="card"><p class="empty">${query ? 'No pages match that search.' : 'No pages yet. They come from your content file.'}</p></section>`;
   const groups = [...new Set(pages.map(p => p.group))];
-  return groups.map(group => `<section><h2 class="caps">${esc(group)}</h2><div class="tiles">${pages.filter(p => p.group === group).map(p =>
-    `<a class="tile" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer"><span class="tile-ico" data-css="--t:var(--${TILE_TINT[p.icon] ?? 'work'})">${tileIcon(p.icon)}</span><b>${esc(p.title)}</b><span>${esc(p.desc)}</span></a>`).join('')}</div></section>`).join('');
+  return groups.map(group => `<section><h2 class="caps">${esc(group)}</h2><div class="tiles">${pages.filter(p => p.group === group).map(p => xcard(`t-${slug(p.group)}-${slug(p.title)}`, {
+    tag: 'div',
+    cls: 'tile',
+    label: `More about ${p.title}`,
+    head: `<span class="tile-ico" data-css="--t:var(--${TILE_TINT[p.icon] ?? 'work'})">${tileIcon(p.icon)}</span><b>${esc(p.title)}</b><span class="tile-desc">${esc(p.desc)}</span>`,
+    body: `${xlist(p.detail)}${facts([['Group', esc(p.group)], ['Opens', esc(hostOf(p.url))]])}<div class="xactions"><a class="btn primary small" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">Open${icon('external', 16)}</a><button class="btn small" type="button" data-action="copy" data-url="${esc(p.url)}">${icon('copy', 16)}Copy link</button></div>`,
+  })).join('')}</div></section>`).join('');
 }
 
 function renderPages() {
@@ -350,15 +561,40 @@ function renderSettings() {
   const workouts = getWorkouts();
   const theme = prefs.theme || 'auto';
   const boxValue = state.confirm === 'boxes' && state.pendingBoxes != null ? state.pendingBoxes : getBoxes();
-  return `<header class="head"><h1>Settings</h1></header>
-  <section class="card"><h2 class="caps">Google Drive</h2>
-    <dl class="rows"><dt>Status</dt><dd>${status}</dd><dt>Last sync</dt><dd>${state.fetchedAt ? stamp(new Date(state.fetchedAt)) : 'Never'}</dd><dt>Content updated</dt><dd>${state.hasContent ? updated : 'No content yet'}</dd></dl>
+  const read = state.papers.filter(item => item.fetchedAt).map(item => item.fetchedAt);
+  const papers = c.dispatch.length
+    ? `${c.dispatch.length} (${c.dispatch.map(item => esc(item.name)).join(', ')}), ${read.length ? `last read ${stamp(new Date(Math.max(...read)))}` : 'not read yet'}`
+    : 'None listed in your content file';
+  const drivePart = xcard('drive', {
+    cls: 'card',
+    label: 'More about the Google Drive link',
+    head: '<h2 class="caps">Google Drive</h2>',
+    mid: `<dl class="rows"><dt>Status</dt><dd>${status}</dd><dt>Last sync</dt><dd>${state.fetchedAt ? stamp(new Date(state.fetchedAt)) : 'Never'}</dd><dt>Content updated</dt><dd>${state.hasContent ? updated : 'No content yet'}</dd></dl>
     ${state.error ? `<p class="errorbox"><b>Couldn't read today's update.</b> Showing the last good copy. ${esc(state.error)}</p>` : ''}
     <div class="actions">
       <button class="btn primary" data-action="sync">${connected || ever || demo ? 'Sync now' : 'Connect Google Drive'}</button>
       ${connected || ever ? `<button class="btn danger" data-action="disconnect">${state.confirm === 'disconnect' ? 'Tap again to disconnect' : 'Disconnect'}</button>` : ''}
-    </div>
-  </section>
+    </div>`,
+    body: facts([
+      ['Reads', `One Google Doc named ${esc(CONTENT_FILE)}, read-only`],
+      ['In it', `${c.projects.length} projects, ${c.pages.length} pages, ${c.upcoming.length} coming up`],
+      ['Dispatch', papers],
+      ['Sign-in', 'Kept on this phone only, until it runs out or you disconnect'],
+    ]),
+  });
+  const aboutPart = xcard('about', {
+    cls: 'card',
+    label: 'More about this app',
+    head: `<h2 class="caps">About</h2><p>${esc(APP_NAME)}, version ${esc(APP_VERSION)}</p>`,
+    body: facts([
+      ["What's new", esc(WHATS_NEW)],
+      ['Saved here', 'Your ticks, streak, box count and top 3 lines stay on this phone. They are not synced.'],
+      ['Offline', 'The app and your last content copy open without a connection.'],
+      ['Content version', String(c.version)],
+    ]),
+  });
+  return `<header class="head"><h1>Settings</h1></header>
+  ${drivePart}
   <section class="card"><h2 class="caps">Routines</h2>
     <form class="setting" data-form="music">
       <label for="music">"I'm home" music link</label>
@@ -378,7 +614,7 @@ function renderSettings() {
   <section class="card"><h2 class="caps">Theme</h2>
     <div class="seg" role="group" aria-label="Theme">${['auto', 'light', 'dark'].map(t => `<button data-action="theme" data-theme="${t}" aria-pressed="${theme === t}">${t[0].toUpperCase() + t.slice(1)}</button>`).join('')}</div>
   </section>
-  <section class="card"><h2 class="caps">About</h2><p>Hub, version ${esc(APP_VERSION)}</p><p class="hint">What's new: ${esc(WHATS_NEW)}</p></section>`;
+  ${aboutPart}`;
 }
 
 // ---------- sheets ----------
@@ -456,7 +692,7 @@ function focusKey() {
   if (el.id) return `#${CSS.escape(el.id)}`;
   if (el.dataset.list) return `input[data-list="${CSS.escape(el.dataset.list)}"][data-item="${CSS.escape(el.dataset.item)}"]`;
   if (!el.dataset.action) return '';
-  return `[data-action="${el.dataset.action}"]` + ['tab', 'filter', 'theme', 'delta', 'sheet', 'target']
+  return `[data-action="${el.dataset.action}"]` + ['tab', 'filter', 'theme', 'delta', 'sheet', 'target', 'id', 'ring', 'counter']
     .filter(name => el.dataset[name] != null).map(name => `[data-${name}="${CSS.escape(el.dataset[name])}"]`).join('');
 }
 
@@ -506,6 +742,27 @@ function confirmed(key) {
 }
 
 // ---------- syncing ----------
+// The Dispatch papers are public web pages, so reading them needs no sign-in. A paper that can't
+// be read keeps its last good copy on screen.
+async function refreshPapers(interactive = false) {
+  const entries = state.content.dispatch;
+  if (!entries.length || state.papersBusy) return;
+  if (!navigator.onLine) {
+    if (interactive) toast("You're offline. Showing the last copy.");
+    return;
+  }
+  state.papersBusy = true;
+  if (!isTyping()) render();
+  try {
+    state.papers = await dispatch.loadAll(entries);
+    state.papersAt = Date.now();
+    if (interactive && state.papers.some(item => item.failed)) toast("Couldn't load every paper");
+  } finally {
+    state.papersBusy = false;
+    if (!isTyping()) render();
+  }
+}
+
 async function loadDemo() {
   const file = demo === 'local' ? 'local-content.txt' : 'sample-content.json';
   state.syncing = true;
@@ -516,6 +773,7 @@ async function loadDemo() {
     let text = await response.text();
     if (demo === 'broken') text = text.replace('"version"', 'version');
     applyText(text);
+    refreshPapers();
   } catch (error) {
     toast(error.message);
   } finally {
@@ -550,6 +808,7 @@ async function syncNow(interactive) {
       text = await drive.fetchContentText();
     }
     applyText(text);
+    refreshPapers();
     if (interactive) toast(state.error ? "Couldn't read today's update" : 'Synced');
   } catch (error) {
     if (interactive) toast(error.message);
@@ -587,7 +846,56 @@ const actions = {
     render();
   },
   goto(el) {
+    const open = el.dataset.open;
+    if (open && !state.open.has(open)) {
+      state.open.add(open);
+      state.justOpened = open;
+      render();
+      state.justOpened = '';
+    }
     goTo(el.dataset.target);
+  },
+  expand(el) {
+    const id = el.dataset.id;
+    if (state.open.has(id)) {
+      state.open.delete(id);
+    } else {
+      state.open.add(id);
+      state.justOpened = id;
+    }
+    render();
+    state.justOpened = '';
+    document.getElementById(`card-${id}`)?.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'nearest' });
+  },
+  ring(el) {
+    state.ring = state.ring === el.dataset.ring ? '' : el.dataset.ring;
+    render();
+    if (state.ring) document.getElementById('ring-panel')?.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'nearest' });
+  },
+  counter(el) {
+    state.counter = state.counter === el.dataset.counter ? '' : el.dataset.counter;
+    render();
+  },
+  'open-project'(el) {
+    const id = el.dataset.id;
+    state.filter = 'all';
+    state.counter = '';
+    state.open.add(id);
+    state.justOpened = id;
+    render();
+    state.justOpened = '';
+    goTo(`card-${id}`);
+  },
+  async copy(el) {
+    try {
+      await navigator.clipboard.writeText(el.dataset.url);
+      toast('Link copied');
+    } catch {
+      toast("Couldn't copy the link");
+    }
+  },
+  'dispatch-retry'() {
+    refreshPapers(true);
   },
   workout() {
     const dates = getWorkouts();
@@ -761,10 +1069,12 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) return;
   tick();
   if (!demo && drive.hasToken() && Date.now() - lastSyncAttempt > 5 * 60_000) syncNow(false);
+  if (Date.now() - state.papersAt > 20 * 60_000) refreshPapers();
 });
 addEventListener('online', () => {
   render();
   if (!demo) drive.preload().catch(() => {});
+  refreshPapers();
 });
 addEventListener('offline', render);
 
@@ -790,4 +1100,5 @@ if (demo) {
 } else if (navigator.onLine) {
   drive.preload().catch(() => {});
   if (drive.hasToken()) syncNow(false);
+  refreshPapers();
 }

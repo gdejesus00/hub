@@ -1,7 +1,7 @@
 // Offline support: load the app from the network when possible, and from the cache when not.
 // Bump CACHE on every release (keep it in step with APP_VERSION in config.js), so every
 // phone picks up the new files.
-const CACHE = 'hive-v1.1.0';
+const CACHE = 'hive-v1.2.0';
 const APP_FILES = [
   './',
   'index.html',
@@ -12,6 +12,7 @@ const APP_FILES = [
   'dispatch.js',
   'drive.js',
   'icons.js',
+  'install.js',
   'routines.js',
   'store.js',
   'time.js',

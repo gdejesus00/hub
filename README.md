@@ -9,7 +9,11 @@ This repository holds only the app's code. Your schedule, projects and links liv
 - **Today**: the now card, countdown, timeline, rings, the Dispatch line, top 3, the day's plan, the 15-minute reset and what's coming up.
 - **Projects**: counts by state, filters, and one card per project.
 - **Pages**: tiles that open your one-pagers and documents.
-- **Settings**: Google Drive, the "I'm home" music link, counters, theme and version.
+- **Settings**: installing, Google Drive, the "I'm home" music link, counters, theme and version.
+
+## Install it on a phone
+
+Open the published address in the phone's browser and tap **Install** near the top of Today, or **Install Hive** in Settings. The button opens the browser's own install box. When the browser offers no box (it has none, or has not offered yet), Settings shows the same thing as menu steps. The button only shows in a browser tab, never inside the installed app, and Settings can hide it from Today. The installed app takes its name and icon from `manifest.webmanifest`.
 
 ## Run it on your PC
 
@@ -63,6 +67,7 @@ Plain HTML, CSS and JavaScript modules with no framework and no build step. A se
 | `app.js` | Startup, the four pages, sheets and taps |
 | `content.js` | Cleans and checks the content file |
 | `dispatch.js` | Reads the public Dispatch editions for the Dispatch line |
+| `install.js` | Decides what the Install button and the Install card show |
 | `routines.js` | Now and next, countdown, shutdown, streak, box estimate |
 | `drive.js` | Google sign-in and reading the Doc |
 | `store.js` | Safe storage on the phone |

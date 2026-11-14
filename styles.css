@@ -1,4 +1,4 @@
-/* Hub app. Deep navy by default, a matching light theme when the phone asks for it.
+/* Hive app. Deep navy by default, a matching light theme when the phone asks for it.
    Color carries meaning: block kinds and project states. Everything else is quiet. */
 :root {
   color-scheme: dark;
@@ -125,6 +125,11 @@ h1 { font-size: 1.6875rem; font-weight: 700; line-height: 1.15; letter-spacing: 
   border: 1px solid color-mix(in srgb, var(--wait) 50%, var(--line));
 }
 .banner > div { flex: 1; font-size: .875rem; }
+
+.banner.install {
+  background: color-mix(in srgb, var(--accent) 14%, var(--card));
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+}
 
 /* ---------- today: now card ---------- */
 .now {
@@ -374,3 +379,10 @@ h1 { font-size: 1.6875rem; font-weight: 700; line-height: 1.15; letter-spacing: 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+/* ---------- installing ---------- */
+.install-status { font-size: .875rem; margin-bottom: 12px; color: var(--muted); }
+.install-status.is-ok { color: var(--ok); font-weight: 600; }
+.steps { display: flex; flex-direction: column; gap: 6px; padding-left: 20px; list-style: decimal; font-size: .875rem; line-height: 1.4; margin-bottom: 4px; }
+.seg.two { grid-template-columns: repeat(2, 1fr); }
+.x.card > .setting { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }

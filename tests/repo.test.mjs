@@ -16,7 +16,7 @@ test('every file the service worker caches exists', () => {
 
 test('every JavaScript module the app imports is cached for offline use', () => {
   const sw = read('sw.js');
-  for (const file of ['app.js', 'config.js', 'content.js', 'dispatch.js', 'drive.js', 'icons.js', 'routines.js', 'store.js', 'time.js']) {
+  for (const file of ['app.js', 'config.js', 'content.js', 'dispatch.js', 'drive.js', 'icons.js', 'install.js', 'routines.js', 'store.js', 'time.js']) {
     assert.ok(sw.includes(`'${file}'`), `${file} is not in APP_FILES`);
     for (const match of read(file).matchAll(/from '\.\/([\w.-]+)'/g)) assert.ok(sw.includes(`'${match[1]}'`), `${match[1]} is not in APP_FILES`);
   }
@@ -39,7 +39,7 @@ test('the manifest is installable and its icons are the sizes they claim', () =>
 });
 
 // ---------- security ----------
-const MODULES = ['app.js', 'config.js', 'content.js', 'dispatch.js', 'drive.js', 'icons.js', 'routines.js', 'store.js', 'time.js'];
+const MODULES = ['app.js', 'config.js', 'content.js', 'dispatch.js', 'drive.js', 'icons.js', 'install.js', 'routines.js', 'store.js', 'time.js'];
 const policy = () => /http-equiv="Content-Security-Policy" content="([^"]+)"/.exec(read('index.html'))?.[1] ?? '';
 const directives = () => Object.fromEntries(
   policy().split(';').map(part => part.trim().split(/\s+/)).filter(([name]) => name).map(([name, ...values]) => [name, values]),
